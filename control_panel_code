@@ -1,0 +1,228 @@
+#include <LiquidCrystal_I2C.h>                              // подключение библиотеки дисплея
+#include <HX711.h>                                          // подключение библиотеки тензодатчика
+#define DOUT A1;                                            // обозначение пина А1 как вывод DOUT
+#define CLK A0;                                             // обозначение пина А2 как вывод CLK тензодатчика
+#define calibration_factor 38.7                             // установка калибровочного коэффициента тензодатчика
+
+LiquidCrystal_I2C lcd(0x3F, 16, 2);                         // инициализация дисплея
+HX711 scale(A1, A0);                                        // обозначение масштаба тензодатчика
+
+float weight_units;                                         // переменная для унций
+float weight_gr;                                            // переменная для граммов
+int hallSensorPin = 2;                                      // подключение датчика Холла к пину 2
+int ledPin_blue = 5;                                        // подключение синего светодиода к пину 5
+int ledPin_red = 4                                          // подключение красного светодиода к пину 4;
+int state2 = 0;                                             // переменная для состояния реле
+int state = 0;                                              // переменная для состояния реле
+int Relay_Pin = 3;                                          // подключение реле к пину 3
+volatile int count = 0;                                     // переменная для подсчета количества оборотов
+volatile int qwerty = 0;                                    // переменная для подсчета кол-ва оборотов и математическо операции
+int analogPin = A2;                                         // подключение неизвестного резистора к пину А2
+float Vout = 0;                                             // переменная для величины напряжения (для измерения сопротивления)
+float R2 = 0;                                               // переменная для величины измеренного сопротивления
+float R = 0;                                                // переменная для заданного значения сопротивления
+const int buttonPin1 = 6;                                   // подключение кнопки 1 к пину 6
+const int buttonPin2 = 10;                                  // подключение кнопки 2 к пину 10
+const int buttonPin3 = 9;                                   // подключение кнопки 3 к пину 9
+const int buttonPin4 = 8;                                   // подключение кнопки 4 к пину 8
+const int buttonPin5 = 7;                                   // подключение кнопки 5 к пину 7
+int buttonstate1 = 0;                                       // переменная для состояния кнопки 1
+int buttonstate2 = 0;                                       // переменная для состояния кнопки 2
+int lastbuttonstate2 = 0;                                   // переменная для состояния кнопки 2
+int buttonstate3 = 0;                                       // переменная для состояния кнопки 3
+int lastbuttonstate3 = 0;                                   // переменная для состояния кнопки 3
+int buttonstate4 = 0;                                       // переменная для состояния кнопки 4
+boolean buttonstate5;                                       // переменная для состояния кнопки 5
+boolean lastbuttonstate5 = 0;                               // переменная для состояния кнопки 5
+boolean stateRelay = 0;                                     // переменная для состояния реле
+boolean state_red = 0;                                      // переменная для красного светодиода
+boolean state_blue = 0;                                     // переменная для синего светодиода
+volatile int AAA = 0;                                       // переменная для подсчета оборотов  (увеличение оборотов)
+volatile int WW = 0;                                        // переменная для подсчета оборотов (уменьшение оборотов)
+int Res = 0;                                                // переменная для резистора
+char myStr[16];                                             // массив для записи данных
+char myStr2[16];                                            // массив для записи данных
+char myStr3[16];                                            // массив для записи данных
+char myStr4[16];                                            // массив для записи данных
+unsigned long lastflash;                                    // переменная для частоты оборотов
+int RPM;                                                    // переменная для частоты оборотов (вывод на дисплей)
+
+void setup() {                                              // инициализация
+    Serial.begin (9600);                                    // последовательный порт (при кодключении к компьютеру)
+    pinMode(ledPin_blue, OUTPUT);                           // установка пина синего светодиода как выход
+    pinMode(ledPin_red, OUTPUT);                            // установка пина красного светодиода как выход
+    pinMode(hallSensorPin, INPUT);                          // установка пина датчика Холла как вход
+    pinMode(Relay_Pin, OUTPUT);                             // установка пина реле как выход
+    pinMode(buttonPin1, INPUT);                             // установка пина кнопки 1 как вход
+    pinMode(buttonPin2, INPUT);                             // установка пина кнопки 2 как вход
+    pinMode(buttonPin3, INPUT);                             // установка пина кнопки 3 как вход
+    pinMode(buttonPin4, INPUT);                             // установка пина кнопки 4 как вход
+    pinMode(buttonPin5, INPUT_PULLUP);                      // установка пина кнопки 5 как вход
+    lcd.init();                                             // инициализация дисплея
+    lcd.backlight();                                        // включение подстветки дисплея
+    delay(100);                                             // задержка 1 мс
+    attachInterrupt(0, counter, RISING);                    // прерывание по фронту сигнала (для датчика Холла)
+    scale.set_scale();                                      // масштаб для тензодатчика
+    scale.set_scale(calibration_factor);                    // инициализация калибровочного коэффициента
+    scale.tare();                                           // тарирование (обнуление показателя тензодатчика)
+}
+
+void counter() {                                            // подпрограмма для датчика Холла и прерывания
+    count ++;                                               // суммирование кол-ва сигналов датчика Холла
+    RPM = 60/((float)(micros()-lastflash0/1000000);         // подсчет частоты оборотов
+    lastflash = micros();                                   // приравнивание времени сигнала к переменной
+}
+
+void loop() {                                               // основная программа
+    state = digitalRead(hallSensorPin);                     // чтение сигнала с датчика Холла
+    buttonstate1 = digitalRead(buttonPin1);                 // чтение кнопки 1
+    buttonstate2 = digitalRead(buttonPin2);                 // чтение кнопки 2
+    buttonstate3 = digitalRead(buttonPin3);                 // чтение кнопки 3
+    buttonstate4 = digitalRead(buttonPin4);                 // чтение кнопки 4
+    int range = map(buttonstate1, buttonMin1, buttonMax1, 0 , 1);     // диапазон переключения (выбор режима)
+    for (int i = 0; i < 5; i ++) {
+        weight_units =+ scale.get_units(), 10;              // суммирование значений показаний тензодатчика
+        weight_units/5;                                     // деление суммы на 5 - устреднение
+        if (weight_units < 0) {     
+            weight_units = 0.00;     
+        }
+    }
+        weight_gr = weight_units*0.035274;                  // перевод унций в граммы
+        lcd.setCursor(11, 0);     
+        lcd.print(weight_gr);    
+        lcd.print("     "); 
+
+        if ((micros() - lastflash) > 5000000 {
+            RPM = 0;       
+        }
+        sprintf(myStr4, "RPM:%-6d", RPM);     
+
+        RESIST();     
+        REFRESH();      
+        start_pause();      
+        qwerty = count/2;     
+        lcd.setCursor(9, 0);    
+        lcd.print("m:");    
+        lcd.setCursor(0, 0);      
+        lcd.print("N:");    
+        lcd.setCursor(2, 0);      
+        lcd.print(qwerty);     
+        lcd.setCursor(9, 1);      
+        lcd.print(myStr4);     
+
+        switch (range) {      
+            case 0:     
+                digitalWrite(Relay_Pin, HIGH);   
+                RELE();    
+                WW = 0;    
+                Res = R2;   
+                sprintf(myStr, "R:-6d", Res);    
+                lcd.setCursor(0 ,1);     
+                lcd.print(myStr);    
+                break;     
+
+             case 1:    
+                R2 = 0;    
+                digitalWrite(Relay_Pin, HIGH);     
+                RELE2();     
+                button_mode2();  
+                WW = AAA - count/2;    
+                sprintf(myStr2, "No:%-6d", AAA);      
+                lcd.setCursor(0, 1);     
+                lcd.print(myStr2);      
+         }
+}
+
+void RESIST() {                                               // подпрограмма для измерения сопротивления
+      Vout = (5.0/1023.0)*analogRead(analogPin);     
+      R2 = 1000/((5.0/Vout)-1);     
+      R = R2;    
+}
+
+void RELE() {     // подпрограмма реле
+      if (R2 > 9000) {     
+            digitalWrite(Relay_Pin, LOW);    
+            digitalWrite(ledPin_red, HIGH);     
+            digitalWrite(ledPin_blue, LOW);     
+      }
+      if (R2<9000) {     
+            digitalWrite(Relay_Pin, HIGH);      
+            if (stateRelay == LOW) {     
+                  digitalWrite(ledPin_blue, HIGH);      
+            }
+            digitalWrite(ledPin_red, LOW);    
+            if (stateRelay == HIGH) {     
+                  digitalWrite(Relay_Pin, LOW);     
+                  digitalWrite(ledPin_red, HIGH);     
+                  digitalWrite(ledPin_blue, LOW);     
+            }
+      }
+}
+
+void RELE2() {                                                // подпрограмма реле для паузы
+      if (WW <= 0) {     
+            digitalWrite(Relat_Pin, LOW);   
+            digitalWrite(ledPin_red, HIGH);   
+            digitalWrite(ledPin_blue, LOW);     
+      }
+      if (WW >  0) {     
+            digitalWrite(Relay_Pin, HIGH);     
+            if (stateRelay == LOW) {      
+                  digitalWrite(ledPin_blue, HIGH);      
+            }
+            digitalWrite(ledPin_red, LOW);     
+            if (stateRelay == HIGH) {     
+                  digitalWrite(Relay_Pin, LOW);     
+                  digitalWrite(ledPin_red, HIGH);     
+                  digita;Write(ledPin_blue, LOW);     
+            }
+      }
+}
+
+void REFRESH() {                                              // подпрограмма обнуления
+      if (buttonstate4 == HIGH) {   
+            count = 0;      
+            qwerty = 0;
+            lcd.setCursor(2, 0);
+            lcd.print( "     ");
+            lcd.setCursor(2, 0);
+            lcd.print(qwerty);
+            AAA = 0;
+            lcd.setCursor(3, 1);
+            lcd.print("     ");
+            lcd.setCursor(3, 1);
+            lcd.print(AAA);
+      }
+}
+
+void start_pause() {                                          // подпрограмма паузы
+      buttonstate5 =!digitalRead(buttonPin5);
+      if (buttonstate5 == 1 && lastbuttonstate5 == 0) {
+            lastbuttonstate5 = 1;
+            stateRelay =!stateRelay;
+            state_red =!state_red;
+            state_blue =!state_blue;
+            digitalWrite(Relay_Pin, stateRelay);
+      }
+      if (buttonstate5 == 0 && lastbuttonstate5 == 1) {
+            lastbuttonstate5 = 0;
+      }
+}
+
+void button_mode2() {                                         // подпрограмма для кнопок + и -
+      if (buttonstate2 != lastbuttonstate2) {
+            if (buttonstate2 == HIGH) {
+                  AAA = AAA + 50;
+            }
+            lastbuttonstate2 = buttonstate2;
+      }
+      if (buttonstate3 != lastbuttonstate3) {
+            if (buttonstate3 == HIGH) {
+                  AAA = AAA -50;
+                  if (AAA < 0) {
+                        AAA = 0;
+                  }
+            }
+            lastbuttonstate3 = buttonstate3;
+      }
+}
